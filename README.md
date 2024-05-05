@@ -1,3 +1,5 @@
+# JetBrains Internship 2024 at Qodana, test task
+
 ## How to run
 ```sh
 git clone https://github.com/FChikh/code_metrics.git
@@ -43,7 +45,7 @@ Counting logic is implemented in `CyclomaticComplexityVisitor` class: mostly, I 
 - Void-type functions: for this type of functions we don’t need explicit returns. However, they still can be explicitly expressed in the procedure, and my algorithm of complexity measurement can fail with these functions due to inability to discover point in program with implicit `returns`.
 - Exit Points: for simplicity, I consider only `return` statements as exit points or implicit return from void function. However, there could possibly exist other exit points such as Exception throws and `System.exit` calls.
 
-`ComplexityMetric` class corresponds to preprocessing stage of Java files using JavaParser methods. Also, it generates a report with 3 most complex methods in specified directory. Every time `loadDirectory` is called, it resets the status of `ComplexityMetric` class: all saved methods with their complexities are erased.
+`ComplexityMetric` class corresponds to preprocessing stage of Java files using JavaParser methods. Also, it generates a report with 3 most complex methods in specified directory. Every time `loadDirectory` is called, it resets the status of `ComplexityMetric` class: all saved methods with their complexities are erased. An inner class `CyclomaticComplexityCalculator` separates calculation of complexity score from parsing part. As a future extension, this class can be generalised to Interface/Abstract class, from which different complexity calculators can be inherited. 
 
 ## Code Style Check
 
@@ -51,7 +53,7 @@ Again, thanks to JavaParser, we can easily extract method names and check them w
 
 However, there are some limitations to this solution. Of course, it is very easy to distinguish the name of a variable written in one case from the name in another; each case has its own peculiarity and for any line it will not be a homonym in different cases.
 
-When it comes to the correct naming of methods, controversy ensues. For example, is the name lessorEqual correct? From the point of view of the camelCase standard, it complies with the rules, but carries less semantic load, unlike lessOrEqual. In such cases, the solution seems to me to ask the dictionary to check for the presence of parts of the method name there.
+When it comes to the correct naming of methods, controversy ensues. For example, is the name lessorEqual correct? From the point of view of the camelCase standard, it complies with the rules, but carries less semantic load, unlike lessOrEqual. In such cases, a possible solution is to parse method's name and look for each part of the name in the dictionary. To improve the search, name can be parsed, then lemmatized and then searched in Word Corpus. 
 
 `StyleCheck` class corresponds to this part of task. It simply checks the name of method obtained with JavaParser functionality by regular expression of camelCase. Checker logic is isolated within inner static class `NamingConventionChecker`, it can be extended with additional methods for other naming convention checks. Every time `loadDirectory` is called, it resets the status of `StyleCheck` class: all saved methods with naming violations are erased.
 
