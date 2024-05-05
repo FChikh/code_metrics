@@ -1,7 +1,5 @@
 package org.metrics;
 
-// Press Shift twice to open the Search Everywhere dialog and type `show whitespaces`,
-// then press Enter. You can now see whitespace characters in your code.
 import java.io.IOException;
 
 public class Main {
@@ -12,13 +10,13 @@ public class Main {
         }
         String directoryPath = args[0];
 
-        CyclomaticComplexityChecker complexityChecker = new CyclomaticComplexityChecker();
+        ComplexityMetric complexityChecker = new ComplexityMetric();
         StyleChecker styleChecker = new StyleChecker();
 
         try {
             System.out.println("\nAnalyzing cyclomatic complexity:");
             complexityChecker.loadDirectory(directoryPath);
-            System.out.println(complexityChecker.getTopComplexMethods());
+            System.out.println(complexityChecker.getResults());
             System.out.println("\nChecking code style:");
             styleChecker.loadDirectory(directoryPath);
             System.out.println(styleChecker.getResults());

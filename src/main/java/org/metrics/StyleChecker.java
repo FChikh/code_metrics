@@ -1,93 +1,68 @@
 package org.metrics;
 
-import java.io.*;
-import java.nio.file.*;
+import com.github.javaparser.ast.CompilationUnit;
+import com.github.javaparser.ast.body.MethodDeclaration;
+import com.github.javaparser.ast.body.TypeDeclaration;
+
+import java.io.IOException;
 import java.util.*;
 import java.util.regex.*;
-import java.util.stream.Stream;
 
-public class StyleChecker {
-    // Pattern for accurately detecting method definitions
-    private static final Pattern methodPattern = Pattern.compile("\\b(public|protected|private|static|final|synchronized|abstract|native)?\\s*" + // Optional common modifiers
-            "\\b(?:void|boolean|byte|char|short|int|long|float|double|[A-Z][\\w<>]*)\\s+" + // Return types and classes
-            "([a-zA-Z_][a-zA-Z0-9_]*)\\s*\\([^)]*\\)\\s*(\\{|;)" // Method name, parameters, and either opening brace or semicolon
-    );
-
-    // Pattern to verify camelCase compliance
-    private static final Pattern camelCasePattern = Pattern.compile("[a-z]+[a-zA-Z0-9]*");
-
-    // Stores non-compliant methods for reporting
+/**
+ * This class analyzes Java files to check whether method names follow naming conventions.
+ */
+public class StyleChecker extends FileReader {
+    private static final Pattern CAMEL_CASE_PATTERN = Pattern.compile("[a-z]+[a-zA-Z0-9]*");
     private final List<String> nonCamelCaseMethods = new ArrayList<>();
     private int totalMethods = 0;
 
-    /**
-     * Analyzes all Java files in the specified directory for naming style violations.
-     *
-     * @param directoryPath The root directory to analyze.
-     * @throws IOException If an error occurs while reading the files.
-     */
-    public void loadDirectory(String directoryPath) throws IOException {
-        try (Stream<Path> entries = Files.walk(Paths.get(directoryPath))) {
-            List<Path> javaFiles = entries.filter(Files::isRegularFile).filter(path -> path.toString().endsWith(".java")).toList();
-            scanFiles(javaFiles);
-        } catch (IOException e) {
-            System.err.println("Error walking directory: " + directoryPath + "; " + e.getMessage());
-        }
+    @Override
+    public void loadDirectory(String directoryPath) throws IOException, IllegalArgumentException {
+        totalMethods = 0;
+        nonCamelCaseMethods.clear();
+        super.loadDirectory(directoryPath);
     }
 
     /**
-     * Analyzes a list of Java files for method naming convention compliance.
+     * Analyzes a compilation unit for method naming convention compliance.
      *
-     * @param javaFiles The list of Java files to analyze.
+     * @param cu CompilationUnit to analyze.
+     * @param relativeFilePath The relative path of the file being analyzed.
      */
-    private void scanFiles(List<Path> javaFiles) {
-        for (Path file : javaFiles) {
-            try {
-                analyzeFile(file);
-            } catch (IOException e) {
-                System.err.printf("Error reading file: %s; %s%n", file, e.getMessage());
-            }
-        }
-    }
-
-    /**
-     * Analyzes a single Java file for method naming convention compliance.
-     *
-     * @param file The Java file to analyze.
-     * @throws IOException If an error occurs while reading the file.
-     */
-    private void analyzeFile(Path file) throws IOException {
-        List<String> lines = Files.readAllLines(file);
-
-        for (String line : lines) {
-            Matcher matcher = methodPattern.matcher(line);
-            if (matcher.find()) {
-                String methodName = matcher.group(2);
+    protected void analyzeCompilationUnit(CompilationUnit cu, String relativeFilePath) {
+        List<TypeDeclaration<?>> types = cu.getTypes();
+        for (TypeDeclaration<?> type : types) {
+            List<MethodDeclaration> methods = type.getMethods();
+            for (MethodDeclaration method : methods) {
+                String methodName = method.getNameAsString();
                 totalMethods++;
-                if (!isCamelCase(methodName)) {
-                    nonCamelCaseMethods.add(String.format("Non-camelCase method: %s in file: %s", methodName, file));
+                if (!NamingConventionChecker.isCamelCase(methodName)) {
+                    nonCamelCaseMethods.add(String.format("%s in file: %s", methodName, relativeFilePath));
                 }
             }
         }
     }
 
-    /**
-     * Checks whether a given method name follows camelCase naming conventions.
-     *
-     * @param name The method name to check.
-     * @return `true` if the method name follows camelCase, otherwise `false`.
-     */
-    private boolean isCamelCase(String name) {
-        return camelCasePattern.matcher(name).matches();
+    public int getTotalMethods() {
+        return totalMethods;
+    }
+
+    public List<String> getNonCamelCaseMethods() {
+        return nonCamelCaseMethods;
     }
 
     /**
      * Generates a string summary of analysis results, including the percentage of non-camelCase methods.
      *
-     * @return A formatted summary of the results.
+     * @return A formatted string of the results.
      */
     public String getResults() {
         StringBuilder results = new StringBuilder();
+
+        if (!failedFiles.isEmpty()) {
+            results.append("Files that failed to parse:\n");
+            failedFiles.forEach(file -> results.append(file).append("\n"));
+        }
 
         if (totalMethods > 0) {
             double incorrectPercentage = (double) nonCamelCaseMethods.size() / totalMethods * 100;
@@ -102,5 +77,22 @@ public class StyleChecker {
         }
 
         return results.toString();
+    }
+
+    /**
+     * Utility class to handle naming convention checks.
+     */
+    static class NamingConventionChecker {
+        private static final Pattern CAMEL_CASE_PATTERN = Pattern.compile("[a-z]+[a-zA-Z0-9]*");
+
+        /**
+         * Checks if a given name follows camelCase naming conventions.
+         *
+         * @param name The name to check.
+         * @return `true` if the name follows camelCase, otherwise `false`.
+         */
+        public static boolean isCamelCase(String name) {
+            return CAMEL_CASE_PATTERN.matcher(name).matches();
+        }
     }
 }
